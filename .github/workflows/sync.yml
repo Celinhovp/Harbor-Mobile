@@ -1,0 +1,22 @@
+name: Auto Sync Fork
+
+on:
+  schedule:
+    # Executa todos os dias à meia-noite (cron)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Permite rodar manualmente se quiser
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync upstream changes
+        uses: aaroncloud/sync-upstream-repo@v1.3.0
+        with:
+          upstream_repo: "https://github.com/9vsv6/Harbor.git"
+          upstream_branch: "beta-branch"
+          downstream_branch: "beta-branch"
+          token: ${{ secrets.GITHUB_TOKEN }}
