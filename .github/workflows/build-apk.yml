@@ -30,4 +30,33 @@ jobs:
           java-version: '17'
 
       - name: Set up Rust
-        uses:
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add aarch64-linux-android
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.2.12479018"
+
+      - name: Set NDK_HOME
+        run: echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+
+      - name: Show scripts and versions (debug)
+        run: |
+          node -e "console.log(JSON.stringify(require('./package.json').scripts, null, 2))"
+          node -v
+          pnpm -v
+          rustc -V
+          echo "NDK_HOME=$NDK_HOME"
+          ls -la src-tauri/gen/android 2>/dev/null || echo "gen/android nao existe (ok)"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Initialize Android project
+        run: |
+          if [ -d "src-tauri/gen/android" ]; then
+            echo "gen/android ja existe, pulando init"
