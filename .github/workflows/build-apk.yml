@@ -36,28 +36,25 @@ jobs:
           rustup target add aarch64-linux-android wasm32-unknown-unknown
 
       - name: Install wasm-pack
-        run: curl --fail --location --retry 3 --retry-all-errors https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+        run: npm install -g wasm-pack
 
       - name: Build harbor-core (wasm)
         working-directory: harbor-core
         run: wasm-pack build --target bundler --out-dir pkg
 
-      - name: Accept Android licenses and install NDK
+      - name: Install Android SDK and NDK 27
         run: |
           export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-
-          mkdir -p "$ANDROID_HOME/licenses"
-          printf "\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_HOME/licenses/android-sdk-license"
-          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
-
           SDKM="$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")"
           yes | "$SDKM" --licenses > /dev/null 2>&1 || true
           "$SDKM" "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
 
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+          NDK="$ANDROID_HOME/ndk/27.2.12479018"
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$NDK" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$NDK" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$NDK" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$NDK" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -71,16 +68,19 @@ jobs:
           fi
 
       - name: Build Android APK (debug)
+        env:
+          # unrar_sys usa lutimes, que nao existe na API 24 do Android
+          CXXFLAGS_aarch64_linux_android: "-Dlutimes=utimes"
+          CFLAGS_aarch64_linux_android: "-Dlutimes=utimes"
         run: |
           set -o pipefail
-          pnpm android:build --debug --verbose 2>&1 | tee build.log
+          echo "NDK em uso: $NDK_HOME"
+          pnpm android:build --debug --apk --target aarch64 --verbose 2>&1 | tee build.log
 
       - name: Show build errors
         if: failure()
         run: |
-          echo "=== LINHAS DE ERRO ==="
-          grep -nE "error(\[E[0-9]+\])?:|FAILURE|What went wrong|Caused by|panicked|not found|could not" build.log | head -60
-          echo "=== ULTIMAS 80 LINHAS ==="
+          grep -nE "error(\[E[0-9]+\])?:|FAILURE|What went wrong|Caused by|panicked" build.log | head -60
           tail -80 build.log
 
       - name: Upload build log
@@ -89,10 +89,6 @@ jobs:
         with:
           name: build-log
           path: build.log
-
-      - name: List build outputs
-        if: always()
-        run: find src-tauri/gen/android -name "*.apk" -o -name "*.aab"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
