@@ -1,13 +1,37 @@
-      - name: Build Android APK
-        run: pnpm android:build --apk
+name: Build Android APK
 
-      - name: List build outputs
-        if: always()
-        run: find src-tauri/gen/android -name "*.apk" -o -name "*.aab"
+on:
+  push:
+    branches:
+      - beta-branch
+  workflow_dispatch:
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v5
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
         with:
-          name: Harbor-Android-APK
-          path: src-tauri/gen/android/app/build/outputs/**/*.apk
-          if-no-files-found: error
+          node-version: '22'
+          cache: pnpm
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Set up
