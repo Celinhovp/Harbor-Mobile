@@ -27,14 +27,14 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Install dependencies and build
+      - name: Install dependencies and build web app
         run: |
           npm install
           npm run build --if-present
 
       - name: Build Android APK with Gradle
+        working-directory: ./android
         run: |
-          cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -42,5 +42,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
