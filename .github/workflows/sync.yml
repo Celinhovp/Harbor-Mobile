@@ -2,21 +2,29 @@ name: Auto Sync Fork
 
 on:
   schedule:
-    # Executa todos os dias à meia-noite (cron)
-    - cron: '0 0 * * *'
-  workflow_dispatch: # Permite rodar manualmente se quiser
+    - cron: '0 0 * * *' # Executa todos os dias à meia-noite
+  workflow_dispatch: # Permite rodar manualmente
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Necessário para dar push na branch
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Sync upstream changes
-        uses: aaroncloud/sync-upstream-repo@v1.3.0
         with:
-          upstream_repo: "https://github.com/9vsv6/Harbor.git"
-          upstream_branch: "beta-branch"
-          downstream_branch: "beta-branch"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote and sync
+        run: |
+          git remote add upstream https://github.com/9vsv6/Harbor.git
+          git fetch upstream
+          git checkout beta-branch
+          git merge upstream/beta-branch --no-edit
+          git push origin beta-branch
