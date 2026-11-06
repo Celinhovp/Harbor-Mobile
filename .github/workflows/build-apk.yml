@@ -34,4 +34,31 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
-      - name: Set up
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.2.12479018"
+
+      - name: Set NDK_HOME
+        run: echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Initialize Android project
+        run: pnpm android:init
+
+      - name: Build Android APK
+        run: pnpm android:build --apk
+
+      - name: List build outputs
+        if: always()
+        run: find src-tauri/gen/android -name "*.apk" -o -name "*.aab"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Harbor-Android-APK
+          path: src-tauri/gen/android/app/build/outputs/**/*.apk
+          if-no-files-found: error
