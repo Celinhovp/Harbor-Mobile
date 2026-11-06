@@ -15,6 +15,11 @@ jobs:
         with:
           ref: beta-branch
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -22,17 +27,20 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Install dependencies and build
+        run: |
+          npm install
+          npm run build --if-present
 
-      - name: Build APK with Gradle
-        run: ./gradlew assembleDebug
+      - name: Build Android APK with Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - name: Find and Upload APK Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: |
-            **/*.apk
-            app/build/outputs/apk/**/*.apk
+          path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
