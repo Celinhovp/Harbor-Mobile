@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  UPSTREAM_REPO: "DONO/REPO"
+  UPSTREAM_REPO: "usuario/app"   # <- troque pelo repositório real
 
 jobs:
   sync:
@@ -22,8 +22,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          TAG="$(gh release view --repo "$UPSTREAM_REPO" --json tagName -q .tagName)"
-          NAME="$(gh release view --repo "$UPSTREAM_REPO" --json name -q .name)"
+          # Pega a release mais recente (inclui pre-releases, ignora drafts)
+          TAG="$(gh release list --repo "$UPSTREAM_REPO" --limit 1 --exclude-drafts --json tagName -q '.[0].tagName')"
+
+          if [ -z "$TAG" ]; then
+            echo "O repositório $UPSTREAM_REPO não possui nenhuma release"
+            exit 1
+          fi
+
+          NAME="$(gh release view "$TAG" --repo "$UPSTREAM_REPO" --json name -q .name)"
           echo "Ultima release do original: $TAG"
 
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
