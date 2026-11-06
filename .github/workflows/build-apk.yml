@@ -35,14 +35,24 @@ jobs:
           rustup default stable
           rustup target add aarch64-linux-android
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android licenses and install NDK
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "ANDROID_HOME=$ANDROID_HOME"
 
-      - name: Install Android NDK
-        run: sdkmanager "ndk;27.2.12479018"
+          # Aceita licencas escrevendo os arquivos diretamente
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf "\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_HOME/licenses/android-sdk-license"
+          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
 
-      - name: Set NDK_HOME
-        run: echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+          # Garante via sdkmanager tambem
+          SDKM="$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
 
       - name: Show scripts and versions (debug)
         run: |
@@ -50,7 +60,9 @@ jobs:
           node -v
           pnpm -v
           rustc -V
-          echo "NDK_HOME=$NDK_HOME"
+          java -version
+          ls $ANDROID_HOME/ndk
+          ls $ANDROID_HOME/licenses
           ls -la src-tauri/gen/android 2>/dev/null || echo "gen/android nao existe (ok)"
 
       - name: Install dependencies
@@ -60,3 +72,20 @@ jobs:
         run: |
           if [ -d "src-tauri/gen/android" ]; then
             echo "gen/android ja existe, pulando init"
+          else
+            pnpm android:init
+          fi
+
+      - name: Build Android APK (debug)
+        run: pnpm android:build --apk --target aarch64 --debug --verbose
+
+      - name: List build outputs
+        if: always()
+        run: find src-tauri/gen/android -name "*.apk" -o -name "*.aab"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Harbor-Android-APK
+          path: src-tauri/gen/android/app/build/outputs/**/*.apk
+          if-no-files-found: error
