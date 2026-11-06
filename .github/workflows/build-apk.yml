@@ -75,7 +75,7 @@ jobs:
         run: |
           set -o pipefail
           echo "NDK em uso: $NDK_HOME"
-          pnpm android:build --debug --apk --target aarch64 --verbose 2>&1 | tee build.log
+          pnpm android:build --debug --verbose 2>&1 | tee build.log
 
       - name: Show build errors
         if: failure()
