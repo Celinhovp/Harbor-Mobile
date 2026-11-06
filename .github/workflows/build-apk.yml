@@ -33,7 +33,14 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
-          rustup target add aarch64-linux-android
+          rustup target add aarch64-linux-android wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl --fail --location --retry 3 --retry-all-errors https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+
+      - name: Build harbor-core (wasm)
+        working-directory: harbor-core
+        run: wasm-pack build --target bundler --out-dir pkg
 
       - name: Accept Android licenses and install NDK
         run: |
